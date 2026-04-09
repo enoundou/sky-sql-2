@@ -1,8 +1,11 @@
-import flights_data
 from datetime import datetime
+import pandas as pd
 import sqlalchemy
 
+import flights_data
+
 IATA_LENGTH = 3
+
 
 def delayed_flights_by_airline():
     """
@@ -22,9 +25,10 @@ def delayed_flights_by_airport():
     When results are back, calls "print_results" to show them to on the screen.
     """
     valid = False
+    airport_input = ''
     while not valid:
         airport_input = input("Enter origin airport IATA code: ")
-        # Valide input
+        # Valid input
         if airport_input.isalpha() and len(airport_input) == IATA_LENGTH:
             valid = True
     results = flights_data.get_delayed_flights_by_airport(airport_input)
@@ -38,6 +42,7 @@ def flight_by_id():
     When results are back, calls "print_results" to show them to on the screen.
     """
     valid = False
+    id_input = ''
     while not valid:
         try:
             id_input = int(input("Enter flight ID: "))
@@ -56,6 +61,7 @@ def flights_by_date():
     When results are back, calls "print_results" to show them to on the screen.
     """
     valid = False
+    date = None
     while not valid:
         try:
             date_input = input("Enter date in DD/MM/YYYY format: ")
@@ -75,13 +81,16 @@ def print_results(results):
     Each object *has* to contain the columns:
     FLIGHT_ID, ORIGIN_AIRPORT, DESTINATION_AIRPORT, AIRLINE, and DELAY.
     """
-    print(f"Got {len(results)} results.")
+    results_len = len(results)
+    print(f"Got {results_len} results.")
+    data_results = []
     for result in results:
         # turn result into dictionary
         result = result._mapping
 
         # Check that all required columns are in place
         try:
+            flight_id = result["FLIGHT_ID"]
             delay = int(result['DELAY']) if result['DELAY'] else 0  # If delay columns is NULL, set it to 0
             origin = result['ORIGIN_AIRPORT']
             dest = result['DESTINATION_AIRPORT']
@@ -95,6 +104,38 @@ def print_results(results):
             print(f"{result['ID']}. {origin} -> {dest} by {airline}, Delay: {delay} Minutes")
         else:
             print(f"{result['ID']}. {origin} -> {dest} by {airline}")
+
+        data_results.append(
+            {"ID": flight_id,
+             "ORIGIN_AIRPORT": origin,
+             "DESTINATION_AIRPORT": dest,
+             "AIRLINE": airline,
+             "DELAY": delay
+             })
+
+    to_csv = input("Would you like to export this data to a CSV file? (y/n)")
+    if to_csv.lower() == "y":
+        filename = input("Enter filename (e.g., results.csv): ")
+        if not filename.endswith(".csv"):
+            filename += ".csv"
+
+        try:
+            if results_len == 0:
+                data_results.append(
+                    {"ID": '',
+                     "ORIGIN_AIRPORT": '',
+                     "DESTINATION_AIRPORT": '',
+                     "AIRLINE": '',
+                     "DELAY": ''
+                     })
+
+            df = pd.DataFrame(data_results)
+            df.to_csv(filename, index=False)
+
+            print(f"Exported {results_len} rows to {filename}")
+
+        except Exception as e:
+            print("Error writing CSV:", e)
 
 
 def show_menu_and_get_input():
@@ -117,19 +158,19 @@ def show_menu_and_get_input():
             pass
         print("Try again...")
 
+
 """
 Function Dispatch Dictionary
 """
-FUNCTIONS = { 1: (flight_by_id, "Show flight by ID"),
-              2: (flights_by_date, "Show flights by date"),
-              3: (delayed_flights_by_airline, "Delayed flights by airline"),
-              4: (delayed_flights_by_airport, "Delayed flights by origin airport"),
-              5: (quit, "Exit")
+FUNCTIONS = {1: (flight_by_id, "Show flight by ID"),
+             2: (flights_by_date, "Show flights by date"),
+             3: (delayed_flights_by_airline, "Delayed flights by airline"),
+             4: (delayed_flights_by_airport, "Delayed flights by origin airport"),
+             5: (quit, "Exit")
              }
 
 
 def main():
-
     # The Main Menu loop
     while True:
         choice_func = show_menu_and_get_input()
